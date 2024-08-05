@@ -1,6 +1,6 @@
+from asyncio.exceptions import TimeoutError
 from environs import Env
 from config import logger
-from pprint import pprint
 
 import asyncio
 import aiohttp
@@ -26,17 +26,15 @@ async def devman_api_requests(url: str, headers: dict, params: dict | None = Non
     '''
     Function get requests to the devman API.
     '''
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, headers=headers, params=params) as response:
-                if response.status == 200:
-                    logger.success("Devman request is success!")
-                    return await response.json()
-                else:
-                    logger.info(f"Devman request is not success! "
-                                f"Status code: {response.status}")
-    except Exception as E:
-        logger.error(f"Error from Devman request: {E}")
+    timeout = aiohttp.ClientTimeout(total=90)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.get(url, headers=headers, params=params) as response:
+            if response.status == 200:
+                logger.success("Devman request is success!")
+                return await response.json()
+            else:
+                logger.info(f"Devman request is not success! "
+                            f"Status code: {response.status}")
 
 
 async def long_polling_request(url: str, headers: dict, params: dict | None = None):
@@ -46,12 +44,14 @@ async def long_polling_request(url: str, headers: dict, params: dict | None = No
     while True:
         try:
             response = await devman_api_requests(url, headers, params)
-            pprint(response)
             if isinstance(response, dict):
                 params['timeout'] = response.get("last_attempt_timestamp")
                 continue
             else:
                 break
+        except TimeoutError:
+            logger.info("Refresh request after the timeout expires")
+            continue
         except Exception as E:
             logger.error(f"Error from while cycle Devman request: {E}")
             break
