@@ -39,10 +39,13 @@ async def devman_api_requests(url: str, headers: dict, params: dict | None = Non
         logger.error(f"Error from Devman request: {E}")
 
 
-async def main():
+async def long_polling_request(url: str, headers: dict, params: dict | None = None):
+    '''
+    Function for long polling API Devman
+    '''
     while True:
         try:
-            response = await devman_api_requests(urls.get("long_polling"), headers, params)
+            response = await devman_api_requests(url, headers, params)
             pprint(response)
             if isinstance(response, dict):
                 params['timeout'] = response.get("last_attempt_timestamp")
@@ -53,6 +56,9 @@ async def main():
             logger.error(f"Error from while cycle Devman request: {E}")
             break
 
+
+async def main():
+    await long_polling_request(urls.get("long_polling"), headers, params)
 
 if __name__ == "__main__":
     asyncio.run(main())
