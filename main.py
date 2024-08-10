@@ -41,7 +41,7 @@ async def devman_api_requests(url: str, headers: dict, params: dict | None = Non
                             f"Status code: {response.status}")
 
 
-async def long_polling_request(url: str, headers: dict, params: dict | None = None):
+async def long_polling_request(url: str, headers: dict, chat_id: int, params: dict | None = None):
     '''
     Function for long polling API Devman
     '''
@@ -60,7 +60,7 @@ async def long_polling_request(url: str, headers: dict, params: dict | None = No
                 message_text = f"{text_notification} " \
                                f"{text_check_success if not check_status else text_check_error} " \
                                f"{text_lesson_url}"
-                await process_send_success_notification(message_text)
+                await process_send_success_notification(chat_id, message_text)
                 params['timeout'] = response.get("last_attempt_timestamp")
                 continue
             elif status == "timeout":
@@ -82,7 +82,8 @@ async def long_polling_request(url: str, headers: dict, params: dict | None = No
 
 
 async def main():
-    await long_polling_request(urls.get("long_polling"), headers, params)
+    chat_id = int(input("Введите chat_id пользователя который будет получать уведомления: "))
+    await long_polling_request(urls.get("long_polling"), headers, chat_id, params)
     # response = await devman_api_requests(urls.get("user_reviews"), headers)
     # pprint(response)
 
