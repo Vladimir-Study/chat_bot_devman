@@ -46,11 +46,15 @@ async def long_polling_request(url: str, headers: dict, params: dict | None = No
     while True:
         try:
             response = await devman_api_requests(url, headers, params)
-            print(response)
-            if isinstance(response, dict):
+            status = response.get("status")
+            if status == "found":
                 params['timeout'] = response.get("last_attempt_timestamp")
                 continue
+            elif status == "timeout":
+                params['timeout'] = response.get("timestamp_to_request")
+                continue
             else:
+                logger.error("LongPolling was been stopped.")
                 break
         except TimeoutError:
             logger.info("Refresh request after the timeout expires")
