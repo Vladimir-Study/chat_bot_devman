@@ -1,6 +1,8 @@
 from asyncio.exceptions import TimeoutError
+from aiohttp.client_exceptions import ClientConnectorError
 from environs import Env
 from config import logger
+from asyncio import sleep
 
 import asyncio
 import aiohttp
@@ -18,7 +20,7 @@ headers = {
 }
 
 params = {
-    "timeout": "1722839837.685598"
+    "timeout": "1722839837"
 }
 
 
@@ -44,6 +46,7 @@ async def long_polling_request(url: str, headers: dict, params: dict | None = No
     while True:
         try:
             response = await devman_api_requests(url, headers, params)
+            print(response)
             if isinstance(response, dict):
                 params['timeout'] = response.get("last_attempt_timestamp")
                 continue
@@ -51,6 +54,10 @@ async def long_polling_request(url: str, headers: dict, params: dict | None = No
                 break
         except TimeoutError:
             logger.info("Refresh request after the timeout expires")
+            continue
+        except ClientConnectorError:
+            logger.info("Refresh request after the connection failed")
+            await sleep(30)
             continue
         except Exception as E:
             logger.error(f"Error from while cycle Devman request: {E}")
