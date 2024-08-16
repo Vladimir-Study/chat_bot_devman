@@ -1,35 +1,41 @@
 from asyncio.exceptions import TimeoutError
 from asyncio import sleep
 from aiohttp.client_exceptions import ClientConnectorError
-from pprint import pprint
+from aiogram import Bot
 
-from bot import process_send_success_notification
-from config import config
-
+from config import logger
 
 import asyncio
 import aiohttp
+import argparse
 
-logger = config.logger.logger
+from environs import Env
+
+env = Env()
+env.read_env()
+
+DEVMAN_TOKEN = env.str("TOKEN")
+BOT_TOKEN = env.str("BOT_TOKEN")
+
+parser = argparse.ArgumentParser()
+bot = Bot(BOT_TOKEN)
 
 urls = {
     "user_reviews": "https://dvmn.org/api/user_reviews/",
     "long_polling": "https://dvmn.org/api/long_polling/",
 }
 
-headers = {
-    "Authorization": f"Token {config.devman_config.token}"
-}
+headers = {"Authorization": f"Token {DEVMAN_TOKEN}"}
 
-params = {
-    "timeout": "1722839837"
-}
+params = {"timeout": ""}
 
 
-async def devman_api_requests(url: str, headers: dict, params: dict | None = None) -> dict:
-    '''
+async def set_devman_api_request(
+    url: str, headers: dict, params: dict | None = None
+) -> dict:
+    """
     Function get requests to the devman API.
-    '''
+    """
     timeout = aiohttp.ClientTimeout(total=90)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.get(url, headers=headers, params=params) as response:
@@ -37,37 +43,44 @@ async def devman_api_requests(url: str, headers: dict, params: dict | None = Non
                 logger.success("Devman request is success!")
                 return await response.json()
             else:
-                logger.info(f"Devman request is not success! "
-                            f"Status code: {response.status}")
+                logger.info(
+                    f"Devman request is not success! " f"Status code: {response.status}"
+                )
 
 
-async def long_polling_request(url: str, headers: dict, chat_id: int, params: dict | None = None):
-    '''
+async def create_long_polling_request(
+    url: str, headers: dict, chat_id: int, params: dict | None = None
+):
+    """
     Function for long polling API Devman
-    '''
+    """
     while True:
         try:
-            response = await devman_api_requests(url, headers, params)
-            status = response.get("status")
-            if status == "found":
-                text_check_success = "Преподователю все понравилось, " \
-                                     "можно приступать к следующему уроку!"
-                text_check_error = "К сожалению в работе нашлись ошибки."
-                text_notification = f"У Вас проверили работу " \
-                                    f"\"{response.get('new_attempts')[0].get('lesson_title')}\" \n\n"
-                text_lesson_url = f"Ссылка на урок: {response.get('new_attempts')[0].get('lesson_url')}"
-                check_status = response.get('new_attempts')[0].get('is_negative')
-                message_text = f"{text_notification} " \
-                               f"{text_check_success if not check_status else text_check_error} " \
-                               f"{text_lesson_url}"
-                await process_send_success_notification(chat_id, message_text)
-                params['timeout'] = response.get("last_attempt_timestamp")
-                continue
-            elif status == "timeout":
-                params['timeout'] = response.get("timestamp_to_request")
-                continue
+            devman_response = await set_devman_api_request(url, headers, params)
+            if devman_response is not None:
+                status = devman_response.get("status")
+                if status == "found":
+                    text_check_success = "Преподователю все понравилось, можно приступать к следующему уроку!"
+                    text_check_error = "К сожалению в работе нашлись ошибки. "
+                    check_status = devman_response.get("new_attempts")[0].get(
+                        "is_negative"
+                    )
+                    message_text = f"""У Вас проверили работу "{devman_response.get('new_attempts')[0].get('lesson_title')}" 
+
+{text_check_success if not check_status else text_check_error} Ссылка на урок: 
+{devman_response.get('new_attempts')[0].get('lesson_url')}"""
+                    await bot.delete_webhook(drop_pending_updates=True)
+                    await bot.send_message(chat_id=chat_id, text=message_text)
+                    params["timeout"] = devman_response.get("last_attempt_timestamp")
+                    continue
+                elif status == "timeout":
+                    params["timeout"] = devman_response.get("timestamp_to_request")
+                    continue
+                else:
+                    logger.error("LongPolling was been stopped.")
+                    break
             else:
-                logger.error("LongPolling was been stopped.")
+                logger.error("Devman return None")
                 break
         except TimeoutError:
             logger.info("Refresh request after the timeout expires")
@@ -82,10 +95,18 @@ async def long_polling_request(url: str, headers: dict, chat_id: int, params: di
 
 
 async def main():
-    chat_id = int(input("Введите chat_id пользователя который будет получать уведомления: "))
-    await long_polling_request(urls.get("long_polling"), headers, chat_id, params)
-    # response = await devman_api_requests(urls.get("user_reviews"), headers)
-    # pprint(response)
+    parser.add_argument(
+        "chat_id",
+        type=int,
+        help="Введите chat_id пользователя который будет получать уведомления: ",
+    )
+    args = parser.parse_args()
+    chat_id = args.chat_id
+
+    await create_long_polling_request(
+        urls.get("long_polling"), headers, chat_id, params
+    )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
