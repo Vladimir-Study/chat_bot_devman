@@ -60,7 +60,6 @@ async def send_notification_status_homework(
 
                     {text_check_success if not check_status else text_check_error} Ссылка на урок: 
                     {homework_data.get('new_attempts')[0].get('lesson_url')}"""
-                await bot.delete_webhook(drop_pending_updates=True)
                 await bot.send_message(chat_id=chat_id, text=tw.dedent(message_text))
                 params["timeout"] = homework_data.get("last_attempt_timestamp")
                 continue
