@@ -15,6 +15,8 @@ URLS = {
     "long_polling": "https://dvmn.org/api/long_polling/",
 }
 
+PARAMS = {"timeout": ""}
+
 
 async def set_devman_api_request(
     url: str, headers: dict, params: dict | None = None
@@ -84,16 +86,14 @@ async def main():
     env = Env()
     env.read_env()
 
-    DEVMAN_TOKEN = env.str("TOKEN")
-    BOT_TOKEN = env.str("BOT_TOKEN")
+    devman_token = env.str("TOKEN")
+    bot_token = env.str("BOT_TOKEN")
 
     parser = argparse.ArgumentParser()
-    bot = Bot(BOT_TOKEN)
+    bot = Bot(bot_token)
 
 
-    headers = {"Authorization": f"Token {DEVMAN_TOKEN}"}
-
-    params = {"timeout": ""}
+    headers = {"Authorization": f"Token {devman_token}"}
 
     logger.add(
         "./logs/log.log",
@@ -114,7 +114,7 @@ async def main():
     chat_id = args.chat_id
 
     await create_long_polling_request(
-        URLS.get("long_polling"), headers, chat_id, bot, params
+        URLS.get("long_polling"), headers, chat_id, bot, PARAMS
     )
 
 
