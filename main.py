@@ -7,6 +7,7 @@ from loguru import logger
 import asyncio
 import aiohttp
 import argparse
+import textwrap as tw
 
 from environs import Env
 
@@ -45,31 +46,29 @@ async def send_notification_status_homework(
     """
     while True:
         try:
-            devman_response = await send_request_api_devman(url, headers, params)
-            if devman_response is not None:
-                status = devman_response.get("status")
-                if status == "found":
-                    text_check_success = "Преподователю все понравилось, можно приступать к следующему уроку!"
-                    text_check_error = "К сожалению в работе нашлись ошибки. "
-                    check_status = devman_response.get("new_attempts")[0].get(
-                        "is_negative"
-                    )
-                    message_text = f"""У Вас проверили работу "{devman_response.get('new_attempts')[0].get('lesson_title')}" 
-
-{text_check_success if not check_status else text_check_error} Ссылка на урок: 
-{devman_response.get('new_attempts')[0].get('lesson_url')}"""
-                    await bot.delete_webhook(drop_pending_updates=True)
-                    await bot.send_message(chat_id=chat_id, text=message_text)
-                    params["timeout"] = devman_response.get("last_attempt_timestamp")
-                    continue
-                elif status == "timeout":
-                    params["timeout"] = devman_response.get("timestamp_to_request")
-                    continue
-                else:
-                    logger.error("LongPolling was been stopped.")
-                    break
-            else:
+            homework_data = await send_request_api_devman(url, headers, params)
+            status = homework_data.get("status")
+            if homework_data is None:
                 logger.error("Devman return None")
+                break
+            if status == "found":
+                text_check_success = "Преподователю все понравилось, можно приступать к следующему уроку!"
+                text_check_error = "К сожалению в работе нашлись ошибки. "
+                check_status = homework_data.get("new_attempts")[0].get("is_negative")
+                message_text = f"""\
+                    У Вас проверили работу "{homework_data.get('new_attempts')[0].get('lesson_title')}" 
+
+                    {text_check_success if not check_status else text_check_error} Ссылка на урок: 
+                    {homework_data.get('new_attempts')[0].get('lesson_url')}"""
+                await bot.delete_webhook(drop_pending_updates=True)
+                await bot.send_message(chat_id=chat_id, text=tw.dedent(message_text))
+                params["timeout"] = homework_data.get("last_attempt_timestamp")
+                continue
+            elif status == "timeout":
+                params["timeout"] = homework_data.get("timestamp_to_request")
+                continue
+            else:
+                logger.error("LongPolling was been stopped.")
                 break
         except TimeoutError:
             logger.info("Refresh request after the timeout expires")
@@ -92,7 +91,6 @@ async def main():
 
     parser = argparse.ArgumentParser()
     bot = Bot(BOT_TOKEN)
-
 
     headers = {"Authorization": f"Token {DEVMAN_TOKEN}"}
 
