@@ -10,23 +10,10 @@ import argparse
 
 from environs import Env
 
-env = Env()
-env.read_env()
-
-DEVMAN_TOKEN = env.str("TOKEN")
-BOT_TOKEN = env.str("BOT_TOKEN")
-
-parser = argparse.ArgumentParser()
-bot = Bot(BOT_TOKEN)
-
-urls = {
+URLS = {
     "user_reviews": "https://dvmn.org/api/user_reviews/",
     "long_polling": "https://dvmn.org/api/long_polling/",
 }
-
-headers = {"Authorization": f"Token {DEVMAN_TOKEN}"}
-
-params = {"timeout": ""}
 
 
 async def set_devman_api_request(
@@ -48,7 +35,7 @@ async def set_devman_api_request(
 
 
 async def create_long_polling_request(
-    url: str, headers: dict, chat_id: int, params: dict | None = None
+    url: str, headers: dict, chat_id: int, bot: Bot, params: dict | None = None
 ):
     """
     Function for long polling API Devman
@@ -94,6 +81,20 @@ async def create_long_polling_request(
 
 
 async def main():
+    env = Env()
+    env.read_env()
+
+    DEVMAN_TOKEN = env.str("TOKEN")
+    BOT_TOKEN = env.str("BOT_TOKEN")
+
+    parser = argparse.ArgumentParser()
+    bot = Bot(BOT_TOKEN)
+
+
+    headers = {"Authorization": f"Token {DEVMAN_TOKEN}"}
+
+    params = {"timeout": ""}
+
     logger.add(
         "./logs/log.log",
         rotation="1 day",
@@ -102,16 +103,18 @@ async def main():
         format="{time} {level} {message}",
         encoding="utf-8",
     )
+
     parser.add_argument(
         "chat_id",
         type=int,
         help="Введите chat_id пользователя который будет получать уведомления: ",
     )
+
     args = parser.parse_args()
     chat_id = args.chat_id
 
     await create_long_polling_request(
-        urls.get("long_polling"), headers, chat_id, params
+        URLS.get("long_polling"), headers, chat_id, bot, params
     )
 
 
