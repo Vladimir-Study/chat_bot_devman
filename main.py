@@ -2,8 +2,7 @@ from asyncio.exceptions import TimeoutError
 from asyncio import sleep
 from aiohttp.client_exceptions import ClientConnectorError
 from aiogram import Bot
-
-from config import logger
+from loguru import logger
 
 import asyncio
 import aiohttp
@@ -95,6 +94,14 @@ async def create_long_polling_request(
 
 
 async def main():
+    logger.add(
+        "./logs/log.log",
+        rotation="1 day",
+        colorize=True,
+        compression="zip",
+        format="{time} {level} {message}",
+        encoding="utf-8",
+    )
     parser.add_argument(
         "chat_id",
         type=int,

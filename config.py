@@ -1,15 +1,4 @@
-from loguru import logger
 from dataclasses import dataclass
-
-
-logger.add(
-    "./logs/log.log",
-    rotation="1 day",
-    colorize=True,
-    compression="zip",
-    format="{time} {level} {message}",
-    encoding="utf-8",
-)
 
 
 @dataclass
