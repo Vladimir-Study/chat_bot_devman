@@ -18,11 +18,11 @@ URLS = {
 PARAMS = {"timeout": ""}
 
 
-async def set_devman_api_request(
+async def send_request_api_devman(
     url: str, headers: dict, params: dict | None = None
 ) -> dict:
     """
-    Function get requests to the devman API.
+    Function send requests to the devman API.
     """
     timeout = aiohttp.ClientTimeout(total=90)
     async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -36,15 +36,16 @@ async def set_devman_api_request(
                 )
 
 
-async def create_long_polling_request(
+async def send_notification_status_homework(
     url: str, headers: dict, chat_id: int, bot: Bot, params: dict | None = None
 ):
     """
     Function for long polling API Devman
+    and send message in telegram
     """
     while True:
         try:
-            devman_response = await set_devman_api_request(url, headers, params)
+            devman_response = await send_request_api_devman(url, headers, params)
             if devman_response is not None:
                 status = devman_response.get("status")
                 if status == "found":
@@ -86,14 +87,14 @@ async def main():
     env = Env()
     env.read_env()
 
-    devman_token = env.str("TOKEN")
-    bot_token = env.str("BOT_TOKEN")
+    DEVMAN_TOKEN = env.str("TOKEN")
+    BOT_TOKEN = env.str("BOT_TOKEN")
 
     parser = argparse.ArgumentParser()
-    bot = Bot(bot_token)
+    bot = Bot(BOT_TOKEN)
 
 
-    headers = {"Authorization": f"Token {devman_token}"}
+    headers = {"Authorization": f"Token {DEVMAN_TOKEN}"}
 
     logger.add(
         "./logs/log.log",
@@ -113,7 +114,7 @@ async def main():
     args = parser.parse_args()
     chat_id = args.chat_id
 
-    await create_long_polling_request(
+    await send_notification_status_homework(
         URLS.get("long_polling"), headers, chat_id, bot, PARAMS
     )
 
