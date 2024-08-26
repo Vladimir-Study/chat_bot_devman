@@ -85,13 +85,13 @@ async def main():
     env = Env()
     env.read_env()
 
-    DEVMAN_TOKEN = env.str("TOKEN")
-    BOT_TOKEN = env.str("BOT_TOKEN")
+    devman_token = env.str("DEVMAN_TOKEN")
+    tg_bot_token = env.str("TG_BOT_TOKEN")
 
     parser = argparse.ArgumentParser()
-    bot = Bot(BOT_TOKEN)
+    bot = Bot(tg_bot_token)
 
-    headers = {"Authorization": f"Token {DEVMAN_TOKEN}"}
+    headers = {"Authorization": f"Token {devman_token}"}
 
     logger.add(
         "./logs/log.log",
